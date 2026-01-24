@@ -35,6 +35,22 @@ SECTION "Program", ROM0[$100]
             ld a, h
             cp a, HIGH(VR_9000 - 1)
             jr nz, .inittset__loop
+        ; Initialize window tileset
+        .initwset:
+            ld de, tset_end
+            ld hl, VR_9000 + tset_end - tset
+          .initwset__loop:
+            ; Copy byte
+            ld a, [de]
+            ld [hld], a
+            dec de
+            ; Next
+            ld a, l
+            cp a, LOW(VR_9000 - 1)
+            jr nz, .initwset__loop
+            ld a, h
+            cp a, HIGH(VR_9000 - 1)
+            jr nz, .initwset__loop
         ; Initialize sprite set
         .initsset:
             ld de, sset_end
@@ -130,8 +146,10 @@ SECTION "Program", ROM0[$100]
             ld a, 0
             ld [input_curr], a
             ld [input_prev], a
+        ; Initialize play
+        call play_init
         ; Finish
-        jp play_init
+        jp play
 
 
 

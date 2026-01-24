@@ -18,8 +18,11 @@ SECTION "Play", ROM0
                 ; Next
                 dec b
                 jr nz, .troutine_loop
+        ; Return
+        ret
 
     play::
+        call input_wait
         ; Reset "previous"
         .setcurr:
             ld hl, play_area1
@@ -52,12 +55,44 @@ SECTION "Play", ROM0
             ld [play_area_p_lo], a
             ld a, HIGH(play_area1)
             ld [play_area_p_hi], a
+        ; Setup screen
+        .screen:
+            ; VBlank
+            .screen_vblank:
+                ld a, [LCD_Y]
+                cp VBLANK
+                jp c, .screen_vblank
+            ; Turn off LCD
+            .screen_lcdoff:
+                ld a, %00000000
+                ld [LCD_CTRL], a
+            ; Turn on LCD
+            .screen_lcdon:
+                ld a, %10000001
+                ld [LCD_CTRL], a
+        ; Reset input
+        .input:
+            ld a, $FF
+            ld [play_input_curr], a
+            ld [play_input_prev], a
 
     play_loop:
-        ; Update area
-        .area:
+        ; Check input
+        .input:
+            ld a, [play_input_curr]
+            ; Pause?
+            bit IN_START, a
+            jp z, play_pause
+            ; Update
+            .input_prev:
+                ld a, [play_input_curr]
+                ld [play_input_prev], a
+                ld a, $FF
+                ld [play_input_curr], a
+        ; Simulate
+        .sim:
             ; Clear 1st row and column
-            .area_clr:
+            .sim_clr:
                 ld a, [play_area_c_hi]
                 ld d, a
                 ld a, [play_area_c_lo]
@@ -67,28 +102,28 @@ SECTION "Play", ROM0
                 ld h, d
                 ld l, e
                 ld b, AREA_W
-                .area_clr_row:
+                .sim_clr_row:
                     ; Set byte
                     ld [hli], a
                     ; Next
                     dec b
-                    jr nz, .area_clr_row
+                    jr nz, .sim_clr_row
                 ; Clear first column
                 ld h, d
                 ld l, e
                 ld d, 0
                 ld e, AREA_W
                 ld b, AREA_H
-                .area_clr_col:
+                .sim_clr_col:
                     ; Set byte
                     ld [hl], a
                     ; Next row
                     add hl, de
                     ; Next
                     dec b
-                    jr nz, .area_clr_col
+                    jr nz, .sim_clr_col
             ; Update
-            .area_fix:
+            .sim_fix:
                 ld a, [play_area_p_hi]
                 ld h, a
                 ld a, [play_area_p_lo]
@@ -99,15 +134,15 @@ SECTION "Play", ROM0
                 ld e, a
                 ; Rows
                 ld c, AREA_H - 1 ; We won't pass thru the last
-                .area_fix_row:
+                .sim_fix_row:
                     ; Columns
                     ld b, AREA_W - 1 ; We won't pass thru the last
-                    .area_fix_col:
+                    .sim_fix_col:
                         ; Update
                         push bc
                         push hl
                             ; Examine
-                            .area_fix_col_exam:
+                            .sim_fix_col_exam:
                                 push de
                                     ; TL
                                     ld a, [hl]
@@ -131,87 +166,87 @@ SECTION "Play", ROM0
                                     ld c, a
                                 pop de
                             ; Set values
-                            .area_fix_col_set:
+                            .sim_fix_col_set:
                                 ld h, d
                                 ld l, e
                                 push de
                                     MACRO play_loop_area_fix_col_set_0
                                         ld a, 0
                                         ; Check neighbor in same tile
-                                        .area_fix_col_set_\@_n1:
+                                        .sim_fix_col_set_\@_n1:
                                             bit \2, \1
-                                            jr z, .area_fix_col_set_\@_n1_end
+                                            jr z, .sim_fix_col_set_\@_n1_end
                                             inc a
-                                            .area_fix_col_set_\@_n1_end:
+                                            .sim_fix_col_set_\@_n1_end:
                                         ; Check neighbor in same tile
-                                        .area_fix_col_set_\@_n2:
+                                        .sim_fix_col_set_\@_n2:
                                             bit \3, \1
-                                            jr z, .area_fix_col_set_\@_n2_end
+                                            jr z, .sim_fix_col_set_\@_n2_end
                                             inc a
-                                            .area_fix_col_set_\@_n2_end:
+                                            .sim_fix_col_set_\@_n2_end:
                                         ; Check neighbor in same tile
-                                        .area_fix_col_set_\@_n3:
+                                        .sim_fix_col_set_\@_n3:
                                             bit \4, \1
-                                            jr z, .area_fix_col_set_\@_n3_end
+                                            jr z, .sim_fix_col_set_\@_n3_end
                                             inc a
-                                            .area_fix_col_set_\@_n3_end:
+                                            .sim_fix_col_set_\@_n3_end:
                                         ; Check neighbor in adjacent tile
-                                        .area_fix_col_set_\@_a1:
+                                        .sim_fix_col_set_\@_a1:
                                             bit \5, \1
-                                            jr z, .area_fix_col_set_\@_a1_end
+                                            jr z, .sim_fix_col_set_\@_a1_end
                                             inc a
-                                            .area_fix_col_set_\@_a1_end:
+                                            .sim_fix_col_set_\@_a1_end:
                                         ; Check neighbor in adjacent tile
-                                        .area_fix_col_set_\@_a2:
+                                        .sim_fix_col_set_\@_a2:
                                             bit \6, \1
-                                            jr z, .area_fix_col_set_\@_a2_end
+                                            jr z, .sim_fix_col_set_\@_a2_end
                                             inc a
-                                            .area_fix_col_set_\@_a2_end:
+                                            .sim_fix_col_set_\@_a2_end:
                                     ENDM
                                     MACRO play_loop_area_fix_col_set_1
                                         ; Check neighbor below tile
-                                        .area_fix_col_set_\@_b1:
+                                        .sim_fix_col_set_\@_b1:
                                             bit \2, \1
-                                            jr z, .area_fix_col_set_\@_b1_end
+                                            jr z, .sim_fix_col_set_\@_b1_end
                                             inc a
-                                            .area_fix_col_set_\@_b1_end:
+                                            .sim_fix_col_set_\@_b1_end:
                                         ; Check neighbor below tile
-                                        .area_fix_col_set_\@_b2:
+                                        .sim_fix_col_set_\@_b2:
                                             bit \3, \1
-                                            jr z, .area_fix_col_set_\@_b2_end
+                                            jr z, .sim_fix_col_set_\@_b2_end
                                             inc a
-                                            .area_fix_col_set_\@_b2_end:
+                                            .sim_fix_col_set_\@_b2_end:
                                         ; Check neighbor below adjacent tile
-                                        .area_fix_col_set_\@_ba:
+                                        .sim_fix_col_set_\@_ba:
                                             bit \4, \1
-                                            jr z, .area_fix_col_set_\@_ba_end
+                                            jr z, .sim_fix_col_set_\@_ba_end
                                             inc a
-                                            .area_fix_col_set_\@_ba_end:
+                                            .sim_fix_col_set_\@_ba_end:
                                     ENDM
                                     MACRO play_loop_area_fix_col_set_2
                                         ; Live or die?
-                                        .area_fix_col_set_\@_lod:
+                                        .sim_fix_col_set_\@_lod:
                                             ; Is the cell currently dead or alive?
                                             bit \2, \1
-                                            jr nz, .area_fix_col_set_\@_lod_alive
-                                            .area_fix_col_set_\@_lod_dead:
+                                            jr nz, .sim_fix_col_set_\@_lod_alive
+                                            .sim_fix_col_set_\@_lod_dead:
                                                 ; Can cell be revived?
                                                 cp a, 3
-                                                jr z, .area_fix_col_set_\@_lod_survive
-                                                jr .area_fix_col_set_\@_lod_end
-                                            .area_fix_col_set_\@_lod_alive:
+                                                jr z, .sim_fix_col_set_\@_lod_survive
+                                                jr .sim_fix_col_set_\@_lod_end
+                                            .sim_fix_col_set_\@_lod_alive:
                                                 ; Will cell survive?
                                                 cp a, 2
-                                                jr z, .area_fix_col_set_\@_lod_survive
+                                                jr z, .sim_fix_col_set_\@_lod_survive
                                                 cp a, 3
-                                                jr z, .area_fix_col_set_\@_lod_survive
-                                                jr .area_fix_col_set_\@_lod_end
-                                            .area_fix_col_set_\@_lod_survive:
+                                                jr z, .sim_fix_col_set_\@_lod_survive
+                                                jr .sim_fix_col_set_\@_lod_end
+                                            .sim_fix_col_set_\@_lod_survive:
                                                 ; Cell will live!
                                                 ld a, [hl]
                                                 or a, \3
                                                 ld [hl], a
-                                            .area_fix_col_set_\@_lod_end:
+                                            .sim_fix_col_set_\@_lod_end:
                                     ENDM
                                     ; TL
                                     play_loop_area_fix_col_set_0 b, 4, 5, 6, 0, 2
@@ -242,16 +277,14 @@ SECTION "Play", ROM0
                         inc de
                         ; Next
                         dec b
-                        jp nz, .area_fix_col
+                        jp nz, .sim_fix_col
                     ; Next row
                     inc hl
                     inc de
                     ; Next
                     dec c
-                    jp nz, .area_fix_row
-
-
-        ; Update tiles
+                    jp nz, .sim_fix_row
+        ; Update tiles (input is also read before each vblank)
         .tiles:
             ld a, [play_area_c_hi]
             ld h, a
@@ -285,15 +318,21 @@ SECTION "Play", ROM0
                         ; Next
                         dec b
                         jr nz, .tiles_x
-                    ; Execute
+                    ; Execute (but read input first)
                     .tiles_y_exe:
+                        ; First, read input
+                        call input_read
+                        cp a, $FF
+                        jr z, .tiles_y_exe__input
+                        ld [play_input_curr], a
+                        .tiles_y_exe__input:
                         ; Wait
                         ld hl, LCD_STAT
-                    .tiles_y_exe__wait:
+                        .tiles_y_exe__wait:
                         bit 1, [hl] ; Mode 0 or 1
                         jr nz, .tiles_y_exe__wait
                         ; VBlank
-                    .tiles_y_exe__vb:
+                        .tiles_y_exe__vb:
                         ld a, [LCD_Y]
                         cp VBLANK
                         jp c, .tiles_y_exe__vb
@@ -339,6 +378,130 @@ SECTION "Play", ROM0
             .nextarea_end:
         ; Loop
         jp play_loop
+    
+    play_pause:
+        call input_wait
+        ; VBlank
+        .vblank:
+            ld a, [LCD_Y]
+            cp VBLANK
+            jp c, .vblank
+        ; Turn off LCD
+        .lcdoff:
+            ld a, %00000000
+            ld [LCD_CTRL], a
+        ; Print pause screen
+        .echo:
+            ld a, $20
+            ld hl, VR_9800 + 7 + 6 * TMAP_DIM
+            ld de, TMAP_DIM - 6
+            ; Row 0
+            ld [hl], $10
+            inc hl
+            ld [hl], $16
+            inc hl
+            ld [hl], $16
+            inc hl
+            ld [hl], $16
+            inc hl
+            ld [hl], $16
+            inc hl
+            ld [hl], $16
+            inc hl
+            ld [hl], $11
+            add hl, de
+            ; Row 1
+            ld [hl], $14
+            inc hl
+            ld [hl], $50
+            inc hl
+            ld [hl], $41
+            inc hl
+            ld [hl], $55
+            inc hl
+            ld [hl], $53
+            inc hl
+            ld [hl], $45
+            inc hl
+            ld [hl], $15
+            add hl, de
+            ; Row 2
+            ld [hl], $12
+            inc hl
+            ld [hl], $17
+            inc hl
+            ld [hl], $17
+            inc hl
+            ld [hl], $17
+            inc hl
+            ld [hl], $17
+            inc hl
+            ld [hl], $17
+            inc hl
+            ld [hl], $13
+            add hl, de
+        ; Turn on LCD
+        .lcdon:
+            ld a, %10000001
+            ld [LCD_CTRL], a
+    
+    play_pause_loop:
+        ; Read input 
+        .input:
+            call input_read
+            ; Pause?
+            bit IN_START, a
+            jp z, play_pause_resume
+        ; VBlank
+        .vblank:
+            ld a, [LCD_Y]
+            cp VBLANK
+            jp c, .vblank
+        ; Loop
+        jp play_pause_loop
+    
+    play_pause_resume:
+        call input_wait
+        ; VBlank
+        .vblank:
+            ld a, [LCD_Y]
+            cp VBLANK
+            jp c, .vblank
+        ; Turn off LCD
+        .lcdoff:
+            ld a, %00000000
+            ld [LCD_CTRL], a
+        ; Clear screen
+        .clear:
+            ld hl, VR_9800
+            ld de, TMAP_DIM - AREA_W
+            ld a, 0
+            ; Rows
+            ld c, AREA_H
+            .clear_y:
+                ; Columns
+                ld b, AREA_W
+                .clear_x:
+                    ; Set byte
+                    ld [hli], a
+                    ; Next
+                    dec b
+                    jr nz, .clear_x
+                ; Next
+                dec c
+                jr nz, .clear_y
+        ; Turn on LCD
+        .lcdon:
+            ld a, %10000001
+            ld [LCD_CTRL], a
+        ; Reset input
+        .input:
+            ld a, $FF
+            ld [play_input_curr], a
+            ld [play_input_prev], a
+        ; Resume simulation
+        jp play_loop
+                
 
 
 
@@ -348,6 +511,8 @@ SECTION "Play WRAM", WRAM0
     play_area_p_hi: db
     play_area_c_lo: db
     play_area_c_hi: db
+    play_input_curr: db
+    play_input_prev: db
     ; Play area 0
     play_area0:
         ds AREA_W * AREA_H

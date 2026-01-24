@@ -3,6 +3,16 @@ INCLUDE "const.inc"
 
 
 SECTION "Input", ROM0
+
+    ; Waits till to no buttons are being pressed
+    ; Modified: a
+    input_wait::
+        call input_read
+        cp a, $FF
+        jr nz, input_wait
+        ret
+
+
     
     ; Reads joypad input
     ; Modified: a, b

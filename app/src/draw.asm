@@ -7,7 +7,7 @@ SECTION "Draw", ROM0
     draw_init::
         ; Initialize cursor
         .cursor:
-            ld a, 0
+            ld a, 2
             ld [draw_x], a
             ld [draw_y], a
         ; Initialize tile

@@ -23,10 +23,12 @@ SECTION "Play", ROM0
 
     play::
         call input_wait
+        ; Turn off LCD
+        call help_lcd_off
         ; Reset "previous"
         .setcurr:
             ld hl, play_area1
-            ld de, testarea
+            ld de, draw_area
             ; Rows
             ld c, AREA_H
             .setcurr_y:
@@ -55,21 +57,42 @@ SECTION "Play", ROM0
             ld [play_area_p_lo], a
             ld a, HIGH(play_area1)
             ld [play_area_p_hi], a
-        ; Setup screen
-        .screen:
-            ; VBlank
-            .screen_vblank:
-                ld a, [LCD_Y]
-                cp VBLANK
-                jp c, .screen_vblank
-            ; Turn off LCD
-            .screen_lcdoff:
-                ld a, %00000000
-                ld [LCD_CTRL], a
-            ; Turn on LCD
-            .screen_lcdon:
-                ld a, %10000001
-                ld [LCD_CTRL], a
+        ; Set tiles
+        .tiles:
+            ld hl, VR_9800
+            ld de, draw_area
+            ; Rows
+            ld c, AREA_H
+            .tiles_y:
+                ; Columns
+                ld b, AREA_W
+                .tiles_x:
+                    ; Copy byte
+                    ld a, [de]
+                    ld [hli], a
+                    inc de
+                    ; Next
+                    dec b
+                    jr nz, .tiles_x
+                ; Next row
+                ld a, l
+                add a, TMAP_DIM - AREA_W
+                ld l, a
+                ld a, h
+                adc a, 0
+                ld h, a
+                ; Next
+                dec c
+                jr nz, .tiles_y
+        ; Set scrolling
+        .scroll:
+            ld a, 4
+            ld [SCR_BX], a
+            ld [SCR_BY], a
+        ; Turn on LCD
+        .lcdon:
+            ld a, %10000001
+            ld [LCD_CTRL], a
         ; Reset input
         .input:
             ld a, $FF
@@ -381,65 +404,35 @@ SECTION "Play", ROM0
     
     play_pause:
         call input_wait
-        ; VBlank
-        .vblank:
-            ld a, [LCD_Y]
-            cp VBLANK
-            jp c, .vblank
         ; Turn off LCD
-        .lcdoff:
-            ld a, %00000000
-            ld [LCD_CTRL], a
+        call help_lcd_off
         ; Print pause screen
         .echo:
-            ld a, $20
-            ld hl, VR_9800 + 7 + 6 * TMAP_DIM
-            ld de, TMAP_DIM - 6
-            ; Row 0
-            ld [hl], $10
-            inc hl
-            ld [hl], $16
-            inc hl
-            ld [hl], $16
-            inc hl
-            ld [hl], $16
-            inc hl
-            ld [hl], $16
-            inc hl
-            ld [hl], $16
-            inc hl
-            ld [hl], $11
-            add hl, de
-            ; Row 1
-            ld [hl], $14
-            inc hl
-            ld [hl], $50
-            inc hl
-            ld [hl], $41
-            inc hl
-            ld [hl], $55
-            inc hl
-            ld [hl], $53
-            inc hl
-            ld [hl], $45
-            inc hl
-            ld [hl], $15
-            add hl, de
-            ; Row 2
-            ld [hl], $12
-            inc hl
-            ld [hl], $17
-            inc hl
-            ld [hl], $17
-            inc hl
-            ld [hl], $17
-            inc hl
-            ld [hl], $17
-            inc hl
-            ld [hl], $17
-            inc hl
-            ld [hl], $13
-            add hl, de
+            ld hl, VR_9800 + PLAY_PAUSE_X + PLAY_PAUSE_Y * TMAP_DIM
+            ld de, play_pause_tiles
+            ; Rows
+            ld c, PLAY_PAUSE_H
+            .echo_y:
+                ; Columns
+                ld b, PLAY_PAUSE_W
+                .echo_x:
+                    ; Copy byte
+                    ld a, [de]
+                    ld [hli], a
+                    inc de
+                    ; Next
+                    dec b
+                    jr nz, .echo_x
+                ; Next row
+                ld a, l
+                add a, LOW(TMAP_DIM - PLAY_PAUSE_W)
+                ld l, a
+                ld a, h
+                adc a, 0
+                ld h, a
+                ; Next
+                dec c
+                jr nz, .echo_y
         ; Turn on LCD
         .lcdon:
             ld a, %10000001
@@ -449,9 +442,12 @@ SECTION "Play", ROM0
         ; Read input 
         .input:
             call input_read
-            ; Pause?
+            ; Resume?
             bit IN_START, a
             jp z, play_pause_resume
+            ; Stop?
+            bit IN_SELECT, a
+            jp z, draw
         ; VBlank
         .vblank:
             ld a, [LCD_Y]
@@ -462,15 +458,8 @@ SECTION "Play", ROM0
     
     play_pause_resume:
         call input_wait
-        ; VBlank
-        .vblank:
-            ld a, [LCD_Y]
-            cp VBLANK
-            jp c, .vblank
         ; Turn off LCD
-        .lcdoff:
-            ld a, %00000000
-            ld [LCD_CTRL], a
+        call help_lcd_off
         ; Clear screen
         .clear:
             ld hl, VR_9800
@@ -504,7 +493,6 @@ SECTION "Play", ROM0
                 
 
 
-
 SECTION "Play WRAM", WRAM0
     play_area: db
     play_area_p_lo: db
@@ -524,8 +512,17 @@ SECTION "Play WRAM", WRAM0
 
 
 
-SECTION "Play Test Area", ROM0
-INCLUDE "testarea.inc"
+SECTION "Play Data", ROM0
+    ; Pause tiles
+    DEF PLAY_PAUSE_X EQU 7
+    DEF PLAY_PAUSE_Y EQU 6
+    DEF PLAY_PAUSE_W EQU 7
+    DEF PLAY_PAUSE_H EQU 3
+    play_pause_tiles:
+        db $10, $16, $16, $16, $16, $16, $11
+        db $14, $50, $41, $55, $53, $45, $15
+        db $12, $17, $17, $17, $17, $17, $13
+    play_pause_tiles_end:
 
 
 

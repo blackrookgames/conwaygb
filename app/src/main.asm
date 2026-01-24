@@ -11,14 +11,8 @@ SECTION "Program", ROM0[$100]
         .audio:
             ld a, 0
             ld [SND_NR52], a
-        ; VBlank
-        .vblank:
-            ld a, [LCD_Y]
-            cp VBLANK
-            jp c, .vblank
-            ; Turn off LCD
-            ld a, %00000000
-            ld [LCD_CTRL], a
+        ; Turn off LCD
+        call help_lcd_off
         ; Initialize tileset
         .inittset:
             ld de, tset_end
@@ -127,15 +121,6 @@ SECTION "Program", ROM0[$100]
                 ld [de], a
             ; Copy DMA routine
             call oam_copydma
-        ; Initialize display
-        .initdisplay:
-            ; Scrolling
-            ld a, 4
-            ld [SCR_BX], a
-            ld [SCR_BY], a
-            ; Turn on LCD
-            ld a, %10000011
-            ld [LCD_CTRL], a
         ; Initialize palettes
         .initpalette:
             ld a, %11100100
@@ -146,10 +131,14 @@ SECTION "Program", ROM0[$100]
             ld a, 0
             ld [input_curr], a
             ld [input_prev], a
+        ; Initialize menu
+        call menu_init
+        ; Initialize draw
+        call draw_init
         ; Initialize play
         call play_init
         ; Finish
-        jp play
+        jp menu
 
 
 

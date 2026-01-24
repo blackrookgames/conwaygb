@@ -11,7 +11,7 @@ EXEPATH := $(BINDIR)/$(EXENAME).gb
 SYMPATH := $(BINDIR)/$(EXENAME).sym
 MAPPATH := $(BINDIR)/$(EXENAME).map
 
-SRCPATHS := main.asm oam.asm input.asm play.asm
+SRCPATHS := main.asm oam.asm input.asm help.asm menu.asm draw.asm play.asm
 
 OBJPATHS := $(foreach path,$(notdir $(SRCPATHS)),$(OBJDIR)/$(path:.asm=.o))
 

@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+		    "name": "App",
+		    "path": "./app"
+		},
+		{
+		    "name": "Misc",
+		    "path": "./misc"
+		},
+		{
+		    "name": "Tool",
+		    "path": "./tool"
+		},
+	],
+	"settings": {
+		"explorer.fileNesting.enabled": true,
+		"workbench.iconTheme": null,
+		"files.associations": {
+			"*.asm": "retroasm_gameboy",
+			"*.inc": "retroasm_gameboy"
+		}
+	}
+}

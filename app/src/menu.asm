@@ -116,6 +116,22 @@ SECTION "Menu", ROM0
         ret
 
     MACRO menu_common
+        ; Read input
+        .rep_input\@:
+            ld c, \3
+            call menu_input
+            ; Back to drawing?
+            bit IN_SELECT, b
+            jp z, \4
+            bit IN_B, b
+            jp z, \4
+            ; Select item?
+            bit IN_START, b
+            jp z, \5
+            bit IN_A, b
+            jp z, \5
+            ; End of input
+            .rep_input__end:
         ; Update cursor
         ld a, 8 + \1 * 8
         ld b, 16 + \2 * 8
@@ -129,6 +145,42 @@ SECTION "Menu", ROM0
         .oam\@:
             ld a, HIGH(oam_buffer)
             call oam_dma
+    ENDM
+
+    MACRO menu_ctrl
+        ; Load menu
+        ld de, \1
+        call menu_load
+        ; "Hide" cursor
+        ld a, 0
+        ld b, 0
+        call menu_updatecursor
+        ; Loop
+        .rep\@:
+            ; Read input
+            .rep\@_input:
+                call input_read
+                ; Previous?
+                bit IN_SELECT, a
+                jp z, \2
+                bit IN_B, a
+                jp z, \2
+                ; Next?
+                bit IN_START, a
+                jp z, \3
+                bit IN_A, a
+                jp z, \3
+            ; VBlank
+            .rep\@_vblank:
+                ld a, [LCD_Y]
+                cp VBLANK
+                jp c, .rep\@_vblank
+            ; OAM
+            .rep\@_oam:
+                ld a, HIGH(oam_buffer)
+                call oam_dma
+            ; Loop
+            jp .rep\@
     ENDM
 
     menu::
@@ -157,24 +209,7 @@ SECTION "Menu", ROM0
         ld [menu_sel], a
         ; Loop
         .rep:
-            ; Read input
-            .rep_input:
-                ld c, 3
-                call menu_input
-                ; Back to drawing?
-                bit IN_SELECT, b
-                jp z, draw
-                bit IN_B, b
-                jp z, draw
-                ; Select item?
-                bit IN_START, b
-                jp z, .select
-                bit IN_A, b
-                jp z, .select
-                ; End of input
-                .rep_input__end:
-            ; Common
-            menu_common MENU0_X, MENU0_Y
+            menu_common MENU_0_X, MENU_0_Y, 3, draw, .select
             jp .rep
         ; Select
         .select:
@@ -190,8 +225,8 @@ SECTION "Menu", ROM0
             .select_clear:
                 cp a, 1
                 jr nz, .select_clear__end
-                ; TODO: Prompt to clear
-                jp menu_0
+                ; Prompt to confirm clearing screen
+                jp menu_1
                 ; End clear
                 .select_clear__end:
             .select_sample:
@@ -201,24 +236,97 @@ SECTION "Menu", ROM0
                 jp menu_0
                 ; End sample
                 .select_sample__end:
-            .select_about:
+            .select_ctrl:
                 cp a, 3
-                jr nz, .select_about__end
-                ; TODO: Goto About screen
-                jp menu_0
+                jr nz, .select_ctrl__end
+                ; Goto Controls screen
+                jp menu_ctrl0
                 ; End about
-                .select_about__end:
+                .select_ctrl__end:
             jp menu_0
     
+    menu_1:
+        ; Load menu
+        ld de, menu_1_map
+        call menu_load
+        ; Set cursor
+        ld a, 0
+        ld [menu_sel], a
+        ; Loop
+        .rep:
+            menu_common MENU_1_X, MENU_1_Y, 1, menu_0, .select
+            jp .rep
+        ; Select
+        .select:
+            ld a, [menu_sel]
+            .select_y:
+                cp a, 0
+                jr nz, .select_y__end
+                ; Clear design
+                .select_y_cls:
+                    ld hl, draw_area
+                    ld a, 0
+                    ; Row
+                    ld c, AREA_H
+                    .select_y_cls_y:
+                        ; Columns
+                        ld b, AREA_W
+                        .select_y_cls_x:
+                            ; Clear byte
+                            ld [hli], a
+                            ; Next
+                            dec b
+                            jr nz, .select_y_cls_x
+                        ; Next
+                        dec c
+                        jr nz, .select_y_cls_y
+                ; Goto draw screen
+                jp draw
+                ; End yes
+                .select_y__end:
+            .select_n:
+                cp a, 1
+                jr nz, .select_n__end
+                ; Return to main menu
+                jp menu_0
+                ; End no
+                .select_n__end:
+            jp menu_1
+    
+    menu_ctrl0:
+        menu_ctrl menu_ctrl0_map, menu_0, menu_ctrl1
+    
+    menu_ctrl1:
+        menu_ctrl menu_ctrl1_map, menu_ctrl0, menu_0
 
 
 SECTION "Menu Menus", ROM0
     ; Menu 0
-    DEF MENU0_X EQU 5
-    DEF MENU0_Y EQU 6
+    DEF MENU_0_X EQU 5
+    DEF MENU_0_Y EQU 6
     menu_0_map:
         INCBIN "menu0.bin"
     menu_0_map_end:
+    ; Menu 1
+    DEF MENU_1_X EQU 7
+    DEF MENU_1_Y EQU 6
+    menu_1_map:
+        INCBIN "menu1.bin"
+    menu_1_map_end:
+    ; Menu 2
+    DEF MENU_2_X EQU 7
+    DEF MENU_2_Y EQU 6
+    menu_2_map:
+        INCBIN "menu2.bin"
+    menu_2_map_end:
+    ; Menu Ctrl 0
+    menu_ctrl0_map:
+        INCBIN "menu_ctrl0.bin"
+    menu_ctrl0_map_end:
+    ; Menu Ctrl 1
+    menu_ctrl1_map:
+        INCBIN "menu_ctrl1.bin"
+    menu_ctrl1_map_end:
 
 
 SECTION "Menu WRAM", WRAM0

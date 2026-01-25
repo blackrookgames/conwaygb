@@ -8,6 +8,22 @@ class ImgUtil:
     Utility for image operations
     """
 
+    #region checkext
+
+    @classmethod
+    def checkext(cls, path:str):
+        """
+        Check if the path has a valid image file extension
+
+        param path:
+            Path
+        return:
+            Whether or not the path has a valid image file extension
+        """
+        return path.endswith((".png", ".bmp", ".jpg", ".tga", ".gif"))
+
+    #endregion
+
     #region load
 
     @classmethod

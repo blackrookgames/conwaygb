@@ -3,7 +3,7 @@ from sys import stderr
 
 class GBUtil:
     """
-    Utility for I/O-related operations
+    Utility for Gameboy-related operations
     """
 
     from cli.helper.IOUtil import IOUtil as __IOUtil

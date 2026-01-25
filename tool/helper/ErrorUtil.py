@@ -49,6 +49,29 @@ class ErrorUtil:
 
     #endregion
 
+    #region valid_bool
+
+    def valid_bool(value, param:None|str = None):
+        """
+        Validates an input value as a boolean value
+
+        :param param:
+            Parameter name (assuming value is an argument for a function)
+        :return:
+            Value as a boolean value
+        :raises TypeValue:
+            value is not a valid boolean value
+        """
+        try:
+            return bool(value)
+        except:
+            if param is not None:
+                raise TypeError(f"{param} is not a valid boolean value.")
+            else:
+                raise TypeError(f"{value} is not a valid boolean value.")
+
+    #endregion
+
     #region valid_str
 
     def valid_str(value, param:None|str = None):

@@ -34,7 +34,7 @@ class cmd_tilemap(cli.CLICommand):
 
     def _main(self):
         # Open tileset
-        if self.tileset.endswith((".png", ".bmp", ".jpg", ".tga", ".gif")):
+        if cli.helper.ImgUtil.checkext(self.tileset):
             _tsetimg = cast(None|img.Img, cli.helper.ImgUtil.load(self.tileset))
             if _tsetimg is None: return 1
             _tileset = gb.GBTileUtil.from_img(_tsetimg)

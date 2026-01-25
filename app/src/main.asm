@@ -143,5 +143,11 @@ SECTION "Program", ROM0[$100]
 
 
 SECTION "Data", ROM0
-INCLUDE "tset.inc"
-INCLUDE "sset.inc"
+    ; Sprite set
+    sset:
+        INCBIN "sset.bin"
+    sset_end:
+    ; Tile set
+    tset:
+        INCBIN "tset.bin"
+    tset_end:

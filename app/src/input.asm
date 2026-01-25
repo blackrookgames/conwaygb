@@ -12,8 +12,6 @@ SECTION "Input", ROM0
         jr nz, input_wait
         ret
 
-
-    
     ; Reads joypad input
     ; Modified: a, b
     ; Return: a

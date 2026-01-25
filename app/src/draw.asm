@@ -17,7 +17,6 @@ SECTION "Draw", ROM0
         ; Reset area
         .area:
             ld hl, draw_area
-            ld de, testarea
             ld a, 0
             ; Rows
             ld c, AREA_H
@@ -26,9 +25,7 @@ SECTION "Draw", ROM0
                 ld b, AREA_W
                 .area_x:
                     ; Clear byte
-                    ld a, [de]
                     ld [hli], a
-                    inc de
                     ; Next
                     dec b
                     jr nz, .area_x
@@ -330,11 +327,6 @@ SECTION "Draw", ROM0
             call oam_dma
         ; Loop
         jp draw_loop
-
-
-
-SECTION "Draw Test", ROM0
-    INCLUDE "testarea.inc"
 
 
 

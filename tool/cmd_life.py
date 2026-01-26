@@ -58,9 +58,9 @@ class cmd_life(cli.CLICommand):
             return cls.TYPE_TXT
         # No, validate the type
         match option:
+            case cls.TYPE_TXT: return cls.TYPE_TXT
             case cls.TYPE_RLE: return cls.TYPE_RLE
-            case cls.TYPE_RLE: return cls.TYPE_IMG
-            case cls.TYPE_RLE: return cls.TYPE_RLE
+            case cls.TYPE_IMG: return cls.TYPE_IMG
         print(f"ERROR: Unknown type: {option}", file = sys.stderr)
         return None
 
@@ -81,7 +81,8 @@ class cmd_life(cli.CLICommand):
                 pattern = cli.helper.LifeUtil.pattern_load_txt(self.input)
                 if pattern is None: return 1
             case self.TYPE_RLE:
-                return 0
+                pattern = cli.helper.LifeUtil.pattern_load_rle(self.input)
+                if pattern is None: return 1
             case self.TYPE_IMG:
                 _img = cast(None | img.Img, cli.helper.ImgUtil.load(self.input))
                 if _img is None: return 1
@@ -93,7 +94,8 @@ class cmd_life(cli.CLICommand):
                 if not cli.helper.LifeUtil.pattern_save_txt(pattern, self.output):
                     return 1
             case self.TYPE_RLE:
-                return 0
+                if not cli.helper.LifeUtil.pattern_save_rle(pattern, self.output):
+                    return 1
             case self.TYPE_IMG:
                 _img = life.LifePatternUtil.to_img(pattern)
                 if not cli.helper.ImgUtil.save(_img, self.output):

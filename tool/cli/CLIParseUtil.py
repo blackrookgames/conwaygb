@@ -32,8 +32,6 @@ class CLIParseUtil:
         Attempts to parse input as an integer
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """
@@ -49,8 +47,6 @@ class CLIParseUtil:
         Attempts to parse input as an 8-bit unsigned integer
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """
@@ -66,8 +62,6 @@ class CLIParseUtil:
         Attempts to parse input as an 8-bit signed integer
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """
@@ -83,8 +77,6 @@ class CLIParseUtil:
         Attempts to parse input as a 16-bit unsigned integer
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """
@@ -100,8 +92,6 @@ class CLIParseUtil:
         Attempts to parse input as a 16-bit signed integer
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """
@@ -117,8 +107,6 @@ class CLIParseUtil:
         Attempts to parse input as a 32-bit unsigned integer
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """
@@ -134,8 +122,6 @@ class CLIParseUtil:
         Attempts to parse input as a 32-bit signed integer
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """
@@ -151,8 +137,6 @@ class CLIParseUtil:
         Attempts to parse input as a 64-bit unsigned integer
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """
@@ -168,8 +152,6 @@ class CLIParseUtil:
         Attempts to parse input as a 64-bit signed integer
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """
@@ -189,8 +171,6 @@ class CLIParseUtil:
         Attempts to parse input as a floating-point decimal
         
         :param input: Input
-        :param min: Minimum value
-        :param max: Maximum value
         :return:
             Parse result
         """

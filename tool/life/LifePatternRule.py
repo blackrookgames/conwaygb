@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 from io import StringIO
 
 class LifePatternRule:
@@ -49,13 +49,13 @@ class LifePatternRule:
             # b
             strio.write('b')
             for v in self.__b:
-                strio.write(v)
+                strio.write(str(v))
             # separator
             strio.write('/')
             # s
             strio.write('s')
             for v in self.__s:
-                strio.write(v)
+                strio.write(str(v))
             # Return
             return strio.getvalue()
 
@@ -95,7 +95,7 @@ class LifePatternRule:
     @classmethod
     def __tuple(cls, input:tuple[int], param:str):
         # Temp array
-        temp = numpy.empty(len(input), dtype = numpy.uint8)
+        temp = np.empty(len(input), dtype = np.uint8)
         for _i in range(len(input)):
             _value = input[_i]
             # Ensure value is valid
@@ -103,9 +103,8 @@ class LifePatternRule:
                 raise ValueError(f"{param} contains one or more out of range values.")
             # Add to temp array
             temp[_i] = _value
-        numpy.unique(temp)
         # Create tuple
-        return tuple(temp)
+        return tuple(np.unique(temp))
     
     def __equals(self, other):
         if not isinstance(other, LifePatternRule):

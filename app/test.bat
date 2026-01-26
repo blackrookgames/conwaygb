@@ -1,0 +1,1 @@
+python ../tool/cmd_life.py ../misc/samples/sample9.rle ../misc/samples/sample9.png

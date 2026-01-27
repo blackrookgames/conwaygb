@@ -2,6 +2,11 @@ INCLUDE "const.inc"
 
 
 
+DEF DRAW_DIR_MIN EQU 15
+DEF DRAW_DIR_MAX EQU 20
+
+
+
 SECTION "Draw", ROM0
 
     draw_init::
@@ -191,110 +196,191 @@ SECTION "Draw", ROM0
         .lcdon:
             ld a, %10000011
             ld [LCD_CTRL], a
+        ; Reset directional input
+        .dir:
+            ld a, 0
+            ld [draw_dir], a
+            ld [draw_dir_t], a
 
     draw_loop:
         ; Read input
         .input:
             call input_read
-            ld b, a
-            ld a, [input_prev]
-            MACRO draw_loop_input_dir
-                ; Negative?
-                .input_\@_neg:
-                    ; Check current input
-                    bit \1, b
-                    jr nz, .input_\@_neg__end
-                    ; Check previous input
-                    bit \1, a
-                    jr z, .input_\@_neg__end
-                    ; Check bound
-                    ld a, [\3]
-                    cp a, 0
-                    jp z, .input__end
-                    ; Decrement
-                    dec a
-                    ld [\3], a
-                    ; End of negative
-                    jp .input__end
-                    .input_\@_neg__end:
-                ; Positive
-                .input_\@_pos:
-                    ; Check current input
-                    bit \2, b
-                    jr nz, .input_\@_pos__end
-                    ; Check previous input
-                    bit \2, a
-                    jr z, .input_\@_pos__end
-                    ; Check bound
-                    ld a, [\3]
-                    cp a, \4
-                    jp z, .input__end
-                    ; Increment
-                    inc a
-                    ld [\3], a
-                    ; End of positive
-                    jp .input__end
-                    .input_\@_pos__end:
-            ENDM
-            ; Horizontal?
-            draw_loop_input_dir IN_DP_L, IN_DP_R, draw_x, SCR_W * 2 - 1
-            ; Vertical?
-            draw_loop_input_dir IN_DP_U, IN_DP_D, draw_y, SCR_H * 2 - 1
-            ; Set cell?
-            .input_setcell:
-                ; Check input
-                bit IN_A, b
-                jr nz, .input_setcell__end
-                ; Get tile
-                call draw_gettile
-                ; Set bit
-                ld c, a
-                call draw_getbit
-                or a, c
-                ld [draw_tile], a
-                ld [hl], a
-                ; Get output address
-                call draw_vrampos
-                ; End of set cell
-                jp .input__end
-                .input_setcell__end:
-            ; Clear cell?
-            .input_clrcell:
-                ; Check input
-                bit IN_B, b
-                jr nz, .input_clrcell__end
-                ; Get tile
-                call draw_gettile
-                ; Clear bit
-                ld c, a
-                call draw_getbit
-                xor a, %11111111
-                and a, c
-                ld [draw_tile], a
-                ld [hl], a
-                ; Get output address
-                call draw_vrampos
-                ; End of clear cell
-                jp .input__end
-                .input_clrcell__end:
-            ; Start simulation?
-            .input_sim:
-                ; Check input
-                bit IN_START, b
-                jr nz, .input_sim__end
-                ; Start simulation
-                jp play
-                ; End of start simulation
-                .input_sim__end:
-            ; Display menu?
-            .input_menu:
-                ; Check input
-                bit IN_SELECT, b
-                jr nz, .input_menu__end
-                ; Display menu
-                jp menu
-                ; End of display menu
-                .input_menu__end:
+            ; Directional?
+            .input_dir:
+                ; Get directional input
+                .input_dir_chk:
+                    MACRO draw_loop_input_dir_chk
+                        .input_dir_chk_\@:
+                            ; Check input
+                            bit \1, a
+                            jr nz, .input_dir_chk_\@__end
+                            ; Set direction
+                            ld a, \2
+                            ; End
+                            jr .input_dir_chk__end
+                            .input_dir_chk_\@__end:
+                    ENDM
+                    ; Right?
+                    draw_loop_input_dir_chk IN_DP_R, $00
+                    ; Up?
+                    draw_loop_input_dir_chk IN_DP_U, $01
+                    ; Left?
+                    draw_loop_input_dir_chk IN_DP_L, $02
+                    ; Down?
+                    draw_loop_input_dir_chk IN_DP_D, $03
+                    ; None
+                    ld a, $FF
+                    ld [draw_dir], a
+                    ld [draw_dir_t], a
+                    jp .input_dir__end
+                    ; End of directional input
+                    .input_dir_chk__end:
+                ; Check repeat
+                .input_dir_rpt:
+                    ld b, a
+                    ld a, [draw_dir]
+                    ; New direction?
+                    .input_dir_rpt_new:
+                        cp a, b
+                        jr z, .input_dir_rpt_new__end
+                        ; Set repeat
+                        ld a, 0
+                        ld [draw_dir_t], a
+                        ; Set direction
+                        ld a, b
+                        ld [draw_dir], a
+                        ; End of new direction
+                        jr .input_dir_rpt__end
+                        .input_dir_rpt_new__end:
+                    ; Repeating direction?
+                    .input_dir_rpt_rpt:
+                        ; Inc repeat
+                        ld a, [draw_dir_t]
+                        inc a
+                        ; Min repeat?
+                        .input_dir_rpt_rpt_min:
+                            cp a, DRAW_DIR_MIN
+                            jr nz, .input_dir_rpt_rpt_min__end
+                            ; Update repeat
+                            ld [draw_dir_t], a
+                            ; Set direction
+                            jr .input_dir_rpt_rpt_set
+                            ; End of min repeat
+                            .input_dir_rpt_rpt_min__end:
+                        ; Max repeat?
+                        .input_dir_rpt_rpt_max:
+                            cp a, DRAW_DIR_MAX
+                            jr nz, .input_dir_rpt_rpt_max__end
+                            ; Update repeat
+                            ld a, DRAW_DIR_MIN
+                            ld [draw_dir_t], a
+                            ; Set direction
+                            jr .input_dir_rpt_rpt_set
+                            ; End of min repeat
+                            .input_dir_rpt_rpt_max__end:
+                        ; No direction
+                        ld [draw_dir_t], a
+                        jr .input_dir_rpt_rpt__end
+                        ; Set direction
+                        .input_dir_rpt_rpt_set:
+                            ld a, b
+                        ; End of repeating direction
+                        jr .input_dir_rpt__end
+                        .input_dir_rpt_rpt__end:
+                    ; Cancel
+                    ld a, $FF
+                    ; End of check repeat
+                    .input_dir_rpt__end:
+                ; Move cursor
+                .input_dir_move:
+                    MACRO draw_loop_input_dir_move
+                        .input_dir_move_\@:
+                            ; Check direction
+                            cp a, \1
+                            jp nz, .input_dir_move_\@__end
+                            ; Check bound
+                            ld a, [\2]
+                            cp a, \3
+                            jp z, .input_dir_move__end
+                            ; Inc/dec
+                            \4 a
+                            ld [\2], a
+                            ; End
+                            jr .input_dir_move__end
+                            .input_dir_move_\@__end:
+                    ENDM
+                    ; Right
+                    draw_loop_input_dir_move $00, draw_x, SCR_W * 2 - 1, inc
+                    ; Up
+                    draw_loop_input_dir_move $01, draw_y, 0, dec
+                    ; Left
+                    draw_loop_input_dir_move $02, draw_x, 0, dec
+                    ; Down
+                    draw_loop_input_dir_move $03, draw_y, SCR_H * 2 - 1, inc
+                    ; End of move
+                    .input_dir_move__end:
+                ; End of directional
+                .input_dir__end:
+            .input_action:
+                ld a, [input_curr]
+                ; Set cell?
+                .input_action_setcell:
+                    ; Check input
+                    bit IN_A, a
+                    jr nz, .input_action_setcell__end
+                    ; Get tile
+                    call draw_gettile
+                    ; Set bit
+                    ld c, a
+                    call draw_getbit
+                    or a, c
+                    ld [draw_tile], a
+                    ld [hl], a
+                    ; Get output address
+                    call draw_vrampos
+                    ; End of set cell
+                    jp .input_action__end
+                    .input_action_setcell__end:
+                ; Clear cell?
+                .input_action_clrcell:
+                    ; Check input
+                    bit IN_B, a
+                    jr nz, .input_action_clrcell__end
+                    ; Get tile
+                    call draw_gettile
+                    ; Clear bit
+                    ld c, a
+                    call draw_getbit
+                    xor a, %11111111
+                    and a, c
+                    ld [draw_tile], a
+                    ld [hl], a
+                    ; Get output address
+                    call draw_vrampos
+                    ; End of clear cell
+                    jp .input_action__end
+                    .input_action_clrcell__end:
+                ; Start simulation?
+                .input_action_sim:
+                    ; Check input
+                    bit IN_START, a
+                    jr nz, .input_action_sim__end
+                    ; Start simulation
+                    jp play
+                    ; End of start simulation
+                    .input_action_sim__end:
+                ; Display menu?
+                .input_action_menu:
+                    ; Check input
+                    bit IN_SELECT, a
+                    jr nz, .input_action_menu__end
+                    ; Display menu
+                    jp menu
+                    ; End of display menu
+                    .input_action_menu__end:
+                ; End of action
+                .input_action__end:
             ; End of input
             .input__end:
         ; Update cursor
@@ -357,6 +443,8 @@ SECTION "Draw WRAM", WRAM0
     draw_tile: db
     draw_tile_lo: db
     draw_tile_hi: db
+    draw_dir: db
+    draw_dir_t: db
     ; Draw area
     draw_area::
         ds AREA_W * AREA_H

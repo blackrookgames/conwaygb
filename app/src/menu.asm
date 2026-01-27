@@ -7,38 +7,61 @@ SECTION "Menu", ROM0
     menu_init::
         ret
 
-    ; Input: d, e
+    ; Input:
+    ;     de: Address of source tiles
     ; Modified: a, b, c, d, e, h, l
     menu_load:
         call input_wait
         ; Turn off LCD
         call help_lcd_off
-        ; Set tiles
-        tiles:
-            ld hl, VR_9800
-            ; Rows
-            ld c, SCR_H
-            .tiles_y:
-                ; Columns
-                ld b, SCR_W
-                .tiles_x:
-                    ; Copy byte
+        ; Get end byte
+        ld a, [de]
+        ld b, a
+        inc de
+        ; Get RLE byte
+        ld a, [de]
+        ld c, a
+        inc de
+        ; Start writing
+        ld hl, VR_9800
+        .lloop:
+            ld a, [de]
+            inc de
+            ; Check if end
+            cp a, b
+            jr z, .lloop__end
+            ; Check if RLE
+            cp a, c
+            jr nz, .lloop_rle__end
+            .lloop_rle:
+                push bc
+                    ; Get char
                     ld a, [de]
-                    ld [hli], a
                     inc de
-                    ; Next
-                    dec b
-                    jr nz, .tiles_x
-                ; Next row
-                ld a, l
-                add a, TMAP_DIM - SCR_W
-                ld l, a
-                ld a, h
-                adc a, 0
-                ld h, a
-                ; Next
-                dec c
-                jr nz, .tiles_y
+                    ld c, a
+                    ; Get length
+                    ld a, [de]
+                    inc de
+                    cp a, 0
+                    jp z, .lloop_rle_loop__end
+                    ld b, a
+                    ; Write that number of times
+                    ld a, c
+                    .lloop_rle_loop:
+                        ld [hli], a
+                        dec b
+                        jr nz, .lloop_rle_loop
+                        .lloop_rle_loop__end:
+                pop bc
+                ; End RLE
+                jr .lloop
+                .lloop_rle__end:
+            ; Write as normal
+            ld [hli], a
+            ; Next
+            jr .lloop
+            ; End
+            .lloop__end:
         ; Turn on LCD
         .lcdon:
             ld a, %10000011
@@ -46,9 +69,11 @@ SECTION "Menu", ROM0
         ; Return
         ret
 
-    ; Input: c
+    ; Input:
+    ;     c:  Max index
     ; Modified: a, b
-    ; Return: a, b
+    ; Return:
+    ;     b:  Input value
     menu_input:
         call input_read
         ld b, a
@@ -98,13 +123,15 @@ SECTION "Menu", ROM0
         ; Return
         ret
 
-    ; Input: a, b
+    ; Input:
+    ;     a:  X-coordinate
+    ;     b:  Y-coordinate
     ; Modified a, h, l
     menu_updatecursor:
         ld hl, oam_buffer + 1
-        ; X-position
+        ; X-coordinate
         ld [hld], a
-        ; Y-position
+        ; Y-coordinate
         ld a, [menu_sel]
         sla a
         sla a
@@ -190,6 +217,7 @@ SECTION "Menu", ROM0
             ld a, 0
             ld [menu_sel], a
             ld [menu_0_sel], a
+            ld [menu_sample_sel], a
         ; Setup sprite
         .sprite:
             ld a, 1
@@ -232,8 +260,8 @@ SECTION "Menu", ROM0
             .select_sample:
                 cp a, 2
                 jr nz, .select_sample__end
-                ; TODO: Goto Samples menu
-                jp menu_0
+                ; Goto Samples menu
+                jp menu_sample
                 ; End sample
                 .select_sample__end:
             .select_ctrl:
@@ -264,22 +292,7 @@ SECTION "Menu", ROM0
                 jr nz, .select_y__end
                 ; Clear design
                 .select_y_cls:
-                    ld hl, draw_area
-                    ld a, 0
-                    ; Row
-                    ld c, AREA_H
-                    .select_y_cls_y:
-                        ; Columns
-                        ld b, AREA_W
-                        .select_y_cls_x:
-                            ; Clear byte
-                            ld [hli], a
-                            ; Next
-                            dec b
-                            jr nz, .select_y_cls_x
-                        ; Next
-                        dec c
-                        jr nz, .select_y_cls_y
+                    call draw_clear
                 ; Goto draw screen
                 jp draw
                 ; End yes
@@ -292,6 +305,83 @@ SECTION "Menu", ROM0
                 ; End no
                 .select_n__end:
             jp menu_1
+    
+    menu_2:
+        ; Load menu
+        ld de, menu_2_map
+        call menu_load
+        ; Set cursor
+        ld a, 0
+        ld [menu_sel], a
+        ; Loop
+        .rep:
+            menu_common MENU_2_X, MENU_2_Y, 1, menu_sample, .select
+            jp .rep
+        ; Select
+        .select:
+            ld a, [menu_sel]
+            .select_y:
+                cp a, 0
+                jr nz, .select_y__end
+                ; Load sample
+                jp sample
+                ; End yes
+                .select_y__end:
+            .select_n:
+                cp a, 1
+                jr nz, .select_n__end
+                ; Return to samples menu
+                jp menu_sample
+                ; End no
+                .select_n__end:
+            jp menu_2
+    
+    menu_sample:
+        ; Load menu
+        ld de, menu_sample_map
+        call menu_load
+        ; Set cursor
+        ld a, [menu_sample_sel]
+        ld [menu_sel], a
+        ld a, 0
+        ld [menu_sample_sel], a
+        ; Loop
+        .rep:
+            menu_common MENU_SAMPLE_X, MENU_SAMPLE_Y, 6, menu_0, .select
+            jp .rep
+        ; Select
+        .select:
+            ld a, [menu_sel]
+            MACRO menu_sample_select
+                .select_\@:
+                    cp a, \1
+                    jr nz, .select_\@__end
+                    ; Save cursor
+                    ld [menu_sample_sel], a
+                    ; Set address
+                    ld a, HIGH(\2)
+                    ld [sample_hi], a
+                    ld a, LOW(\2)
+                    ld [sample_lo], a
+                    ; Goto prompt
+                    jp menu_2
+                    ; End
+                    .select_\@__end:
+            ENDM
+            ; Sample 0
+            menu_sample_select 0, sample_0
+            ; Sample 1
+            menu_sample_select 1, sample_1
+            ; Sample 2
+            menu_sample_select 2, sample_2
+            ; Sample 3
+            menu_sample_select 3, sample_3
+            ; Sample 4
+            menu_sample_select 4, sample_4
+            ; Sample 5
+            menu_sample_select 5, sample_5
+            ; Go back
+            jp menu_0
     
     menu_ctrl0:
         menu_ctrl menu_ctrl0_map, menu_0, menu_ctrl1
@@ -319,6 +409,12 @@ SECTION "Menu Menus", ROM0
     menu_2_map:
         INCBIN "menu2.bin"
     menu_2_map_end:
+    ; Menu Sample
+    DEF MENU_SAMPLE_X EQU 1
+    DEF MENU_SAMPLE_Y EQU 1
+    menu_sample_map:
+        INCBIN "menu_sample.bin"
+    menu_sample_map_end:
     ; Menu Ctrl 0
     menu_ctrl0_map:
         INCBIN "menu_ctrl0.bin"
@@ -333,3 +429,4 @@ SECTION "Menu WRAM", WRAM0
     menu_sel: db
     menu_max: db
     menu_0_sel: db
+    menu_sample_sel: db

@@ -35,6 +35,27 @@ SECTION "Draw", ROM0
         ; Return
         ret
 
+    ; Modified: a, b, c, h, l
+    draw_clear::
+        ld hl, draw_area
+        ld a, 0
+        ; Row
+        ld c, AREA_H
+        .clr_y:
+            ; Columns
+            ld b, AREA_W
+            .clr_x:
+                ; Clear byte
+                ld [hli], a
+                ; Next
+                dec b
+                jr nz, .clr_x
+            ; Next
+            dec c
+            jr nz, .clr_y
+        ; Return
+        ret
+
     ; Modified: a, d, e, h, l
     ; Return: a, h, l
     draw_gettile:

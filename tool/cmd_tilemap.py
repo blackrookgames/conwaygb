@@ -3,10 +3,10 @@ import sys
 
 from typing import cast
 
-import cli._00 as cli
-import gb._00 as gb
-import data._00 as data
-import img._00 as img
+import src.cli as cli
+import src.gb as gb
+import src.data as data
+import src.img as img
 
 TILESIZE = 8
 

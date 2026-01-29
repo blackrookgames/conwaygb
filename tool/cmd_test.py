@@ -1,8 +1,8 @@
 import sys
 
-import cli._00 as cli
+import src.cli
 
-class cmd_test(cli.CLICommand):
+class cmd_test(src.cli.CLICommand):
 
     @property
     def _desc(self) -> None|str:
@@ -10,71 +10,71 @@ class cmd_test(cli.CLICommand):
 
     #region required
 
-    __string = cli.CLIRequiredDef(\
+    __string = src.cli.CLIRequiredDef(\
         name = "string",\
         desc = "String")
-    __number = cli.CLIRequiredDef(\
+    __number = src.cli.CLIRequiredDef(\
         name = "number",\
         desc = "Number",\
-        parse = cli.CLIParseUtil.to_int)
+        parse = src.cli.CLIParseUtil.to_int)
 
     #endregion
 
     #region optional
 
-    __u8 = cli.CLIOptionWArgDef(\
+    __u8 = src.cli.CLIOptionWArgDef(\
         name = "u8",\
         short = 'B',\
         desc = "8-bit unsigned integer",\
-        parse = cli.CLIParseUtil.to_uint8,\
+        parse = src.cli.CLIParseUtil.to_uint8,\
         default = 0)
-    __i8 = cli.CLIOptionWArgDef(\
+    __i8 = src.cli.CLIOptionWArgDef(\
         name = "i8",\
         short = 'b',\
         desc = "8-bit signed integer",\
-        parse = cli.CLIParseUtil.to_int8,\
+        parse = src.cli.CLIParseUtil.to_int8,\
         default = 0)
-    __u16 = cli.CLIOptionWArgDef(\
+    __u16 = src.cli.CLIOptionWArgDef(\
         name = "u16",\
         short = 'S',\
         desc = "16-bit unsigned integer",\
-        parse = cli.CLIParseUtil.to_uint16,\
+        parse = src.cli.CLIParseUtil.to_uint16,\
         default = 0)
-    __i16 = cli.CLIOptionWArgDef(\
+    __i16 = src.cli.CLIOptionWArgDef(\
         name = "i16",\
         short = 's',\
         desc = "16-bit signed integer",\
-        parse = cli.CLIParseUtil.to_int16,\
+        parse = src.cli.CLIParseUtil.to_int16,\
         default = 0)
-    __u32 = cli.CLIOptionWArgDef(\
+    __u32 = src.cli.CLIOptionWArgDef(\
         name = "u32",\
         short = 'I',\
         desc = "32-bit unsigned integer",\
-        parse = cli.CLIParseUtil.to_uint32,\
+        parse = src.cli.CLIParseUtil.to_uint32,\
         default = 0)
-    __i32 = cli.CLIOptionWArgDef(\
+    __i32 = src.cli.CLIOptionWArgDef(\
         name = "i32",\
         short = 'i',\
         desc = "32-bit signed integer",\
-        parse = cli.CLIParseUtil.to_int32,\
+        parse = src.cli.CLIParseUtil.to_int32,\
         default = 0)
-    __u64 = cli.CLIOptionWArgDef(\
+    __u64 = src.cli.CLIOptionWArgDef(\
         name = "u64",\
         short = 'L',\
         desc = "64-bit unsigned integer",\
-        parse = cli.CLIParseUtil.to_uint64,\
+        parse = src.cli.CLIParseUtil.to_uint64,\
         default = 0)
-    __i64 = cli.CLIOptionWArgDef(\
+    __i64 = src.cli.CLIOptionWArgDef(\
         name = "i64",\
         short = 'l',\
         desc = "64-bit signed integer",\
-        parse = cli.CLIParseUtil.to_int64,\
+        parse = src.cli.CLIParseUtil.to_int64,\
         default = 0)
-    __f = cli.CLIOptionWArgDef(\
+    __f = src.cli.CLIOptionWArgDef(\
         name = "float",\
         short = 'f',\
         desc = "Floating-point decimal",\
-        parse = cli.CLIParseUtil.to_float,\
+        parse = src.cli.CLIParseUtil.to_float,\
         default = 0)
 
     #endregion
@@ -97,4 +97,5 @@ class cmd_test(cli.CLICommand):
 
     #endregion
 
-sys.exit(cmd_test().execute(sys.argv))
+if __name__ == '__main__':
+    sys.exit(cmd_test().execute(sys.argv))

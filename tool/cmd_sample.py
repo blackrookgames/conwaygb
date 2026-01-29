@@ -3,10 +3,10 @@ import sys
 
 from typing import cast
 
-import cli._00 as cli
-import data._00 as data
-import img._00 as img
-import life._00 as life
+import src.cli as cli
+import src.data as data
+import src.img as img
+import src.life as life
 
 class cmd_sample(cli.CLICommand):
 

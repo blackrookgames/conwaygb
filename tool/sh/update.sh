@@ -1,60 +1,49 @@
-# Updates the _00 references
+# Updates the __init__ references
 
-shdir="$(dirname $BASH_SOURCE)"
-pydir="$(realpath $(dirname $(realpath $shdir)))"
+shdir="$(dirname $(realpath $BASH_SOURCE))"
+pydir="$(dirname $shdir)/src"
 
-update() {
-    local _parent=$1
-    local _relto=$2
-    # _00.py
-    local -a _00="$_parent/_00.py"
-    # Delete _00 so it doesn't get detected when searching for python files
-    if [ -f "$_00" ]; then
-        rm "$_00"
-    fi
-    # Directories 
+updateinit() {
+    local _dir=$1
+    local _path=
+    local _name=
+    local _ext=
+    # Gather files/directories
+    local -a _files=()
     local -a _dirs=()
-    readarray -d '' _dirs < <(find "$_parent" -mindepth 1 -maxdepth 1 -type d -print0)
-    # Python files
-    local -a _pys=()
-    readarray -d '' _pys < <(find "$_parent" -mindepth 1 -maxdepth 1 -type f -name '*.py' -print0)
-    # Create _00
-    local _path=""
-    local _base=""
-    local _name=""
-    local -a _dir_pys=()
-    for _path in "${_dirs[@]}"; do
-        # Ensure directory is not python cache
-        _base="$(basename "$_path")"
-        if [ "$_base" = "__pycache__" ]; then
-            continue
+    for _path in $_dir/*; do
+        _name="$(basename $_path)"
+        # Is it a file?
+        if [ -f "$_path" ]; then
+            # Make sure it is a .py file
+            _ext="${_path##*.}"
+            if [ ! "$_ext" = "py" ]; then continue ; fi
+            _name="${_name%.*}"
+            # Make sure it isn't a init file
+            if [ "$_name" = "__init__" ]; then continue ; fi
+            # Add file
+            _files+=("$_name")
+        # Is it a directory?
+        elif [ -d "$_path" ]; then
+            # Make sure it isn't a cache directory
+            if [ "$_name" = "__pycache__" ]; then continue ; fi
+            # Update
+            updateinit $_path
+            # Add directory
+            _dirs+=("$_name")
         fi
-        # Ensure directory contains python code
-        _dir_pys=()
-        readarray -d '' _dir_pys < <(find "$_path" -mindepth 1 -type f -name '*.py' -print0)
-        if [ "${#_dir_pys[@]}" -eq 0 ]; then
-            continue
-        fi
-        # Add directory
-        _name="$(realpath --relative-to="$_relto" "$_path")"
-        _name="${_name//\//.}"
-        echo "import $_name._00 as $_base" >>"$_00"
     done
-    for _path in "${_pys[@]}"; do
-        # Add file
-        _name="$(realpath --relative-to="$_relto" "$_path")"
-        _name="${_name%.*}"
-        _name="${_name//\//.}"
-        echo "from $_name import *" >>"$_00"
+    # Create init
+    local _init="$_dir/__init__.py"
+    if [ -f "$_init" ]; then rm -f "$_init" ; fi
+    # Loop thru directories
+    for _name in "${_dirs[@]}"; do
+        echo "from .$_name import *" >>"$_init"
     done
-    # Recursive
-    for _path in "${_dirs[@]}"; do
-        update "$_path" "$_relto"
+    # Loop thru files
+    for _name in "${_files[@]}"; do
+        echo "from .$_name import *" >>"$_init"
     done
 }
 
-declare -a subdirs=()
-readarray -d '' subdirs < <(find "$pydir" -mindepth 1 -maxdepth 1 -type d -print0)
-for _subdir in "${subdirs[@]}"; do
-    update "$_subdir" "$pydir"
-done
+updateinit $pydir
